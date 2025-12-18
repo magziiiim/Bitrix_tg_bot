@@ -1,0 +1,7 @@
+python-telegram-bot
+requests
+python-dotenv
+sqlalchemy
+psycopg2-binary
+selenium
+webdriver-manager

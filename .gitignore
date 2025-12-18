@@ -1,0 +1,11 @@
+venv/
+ENV/
+env/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+current_context.txt
+chromedriver
