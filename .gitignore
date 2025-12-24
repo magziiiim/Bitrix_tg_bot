@@ -1,11 +1,9 @@
-venv/
-ENV/
-env/
 .env
+venv/
+.venv/
+env/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-*.log
-current_context.txt
-chromedriver
+bitrix_docs.txt
+.vscode/
+.idea/

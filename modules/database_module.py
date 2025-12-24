@@ -1,34 +1,31 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
+import datetime
+from sqlalchemy import create_engine, Column, Integer, BigInteger, Text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
-from config import DATABASE_URL
+from config import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 Base = declarative_base()
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Модель таблицы (заменяет database.models)
-class MessageHistory(Base):
-    __tablename__ = 'messages'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
+class Message(Base):
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger)
     question = Column(Text)
     answer = Column(Text)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-class Database:
-    def __init__(self):
-        self.engine = create_engine(DATABASE_URL)
-        Base.metadata.create_all(self.engine) # Создает таблицы, если их нет
-        self.SessionLocal = sessionmaker(bind=self.engine)
+def init_db():
+    Base.metadata.create_all(bind=engine)
 
-    def save_message(self, user_id, question, answer):
-        session = self.SessionLocal()
-        try:
-            new_msg = MessageHistory(user_id=user_id, question=question, answer=answer)
-            session.add(new_msg)
-            session.commit()
-        except Exception as e:
-            print(f"Database Error: {e}")
-            session.rollback()
-        finally:
-            session.close()
+def save_message(user_id, question, answer):
+    db = SessionLocal()
+    try:
+        new_msg = Message(user_id=user_id, question=question, answer=answer)
+        db.add(new_msg)
+        db.commit()
+    finally:
+        db.close()

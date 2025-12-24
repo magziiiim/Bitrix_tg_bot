@@ -1,7 +1,8 @@
-python-telegram-bot
+aiogram
 requests
 python-dotenv
 sqlalchemy
 psycopg2-binary
 selenium
 webdriver-manager
+yandex-cloud-ml-sdk

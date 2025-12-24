@@ -1,50 +1,25 @@
-import requests
-from config import YANDEX_API_KEY, YANDEX_FOLDER_ID
+from yandex_cloud_ml_sdk import YCloudML
+from config import YANDEX_API_KEY, YANDEX_FOLDER_ID, ASSISTANT_ID
 
 class YandexAssistant:
     def __init__(self):
-        self.api_key = YANDEX_API_KEY
-        self.folder_id = YANDEX_FOLDER_ID
+        self.sdk = YCloudML(
+            folder_id=YANDEX_FOLDER_ID.strip().replace('"', ''),
+            auth=YANDEX_API_KEY.strip().replace('"', ''),
+        )
+        self.assistant = self.sdk.assistants.get(ASSISTANT_ID.strip().replace('"', ''))
+        self.thread = self.sdk.threads.create()
 
-    def get_answer(self, query: str) -> str:
-        url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-        
-        headers = {
-            "Authorization": f"Api-Key {self.api_key}",
-            "x-folder-id": self.folder_id,
-            "Content-Type": "application/json"
-        }
-        
-        data = {
-            "modelUri": f"gpt://{self.folder_id}/yandexgpt-lite/latest",
-            "completionOptions": {
-                "stream": False, 
-                "temperature": 0.1,
-                "maxTokens": 2000
-            },
-            "messages": [
-                {
-                    "role": "system", 
-                    "text": (
-                        "Ты — эксперт по разработке в Bitrix24. Отвечай технически точно. "
-                        "Обязательно используй базу знаний документации. "
-                        "Правила: Названия полей только в ВЕРХНЕМ РЕГИСТРЕ. "
-                        "Название метода всегда в формате сущность.действие (например, crm.deal.add). "
-                        "Примеры кода оборачивай в блоки кода Markdown."
-                    )
-                },
-                {"role": "user", "text": query}
-            ]
-        }
-
+    def ask_question(self, user_text):
         try:
-            response = requests.post(url, headers=headers, json=data)
-            if response.status_code != 200:
-                print(f"DEBUG Yandex API Error: {response.status_code} - {response.text}")
+            self.thread.write(user_text)
+            run = self.assistant.run(self.thread)
+            result = run.wait()
             
-            response.raise_for_status()
-            result = response.json()
-            return result['result']['alternatives'][0]['message']['text']
+            if result.message and result.message.parts:
+                return str(result.message.parts[0])
+            
+            return "К сожалению, в документации Bitrix24 нет прямого ответа на этот вопрос."
+            
         except Exception as e:
-            print(f"CRITICAL ERROR in YandexAssistant: {e}")
-            return "Извините, возникла ошибка при обращении к нейросети."
+            return f"Ошибка Yandex Cloud: {str(e)}"

@@ -1,43 +1,37 @@
+import asyncio
 import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
-from config import TG_BOT_TOKEN
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from config import TELEGRAM_TOKEN
+from modules.database_module import save_message, init_db
 from modules.yandex_assistant_module import YandexAssistant
-from modules.database_module import Database
-from modules.parser_module import BitrixParser
 
-assistant = YandexAssistant()
-db = Database()
+logging.basicConfig(level=logging.INFO)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я эксперт по API Bitrix24. Задавай свой вопрос.")
+bot = Bot(token=TELEGRAM_TOKEN)
+dp = Dispatcher()
+ai_assistant = YandexAssistant()
 
-async def update_docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔄 Запущен процесс актуализации знаний через Selenium...")
-    parser = BitrixParser()
-    url = "https://apidocs.bitrix24.ru/api_help/crm/deals/crm_deal_add.php"
-    data = parser.get_method_details(url)
-    if "error" not in data:
-        await update.message.reply_text(f"✅ Данные метода {data['title']} успешно спарсены.")
-    else:
-        await update.message.reply_text("❌ Ошибка при парсинге документации.")
+@dp.message(Command("start"))
+async def start_handler(message: types.Message):
+    await message.answer("Бот-ассистент по Bitrix24 API запущен. Задайте ваш вопрос.")
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text
-    user_id = update.message.from_user.id
-    
-    answer = assistant.get_answer(user_text)
-    
-    db.save_message(user_id, user_text, answer)
-    
-    await update.message.reply_text(answer, parse_mode='Markdown')
+@dp.message()
+async def message_handler(message: types.Message):
+    if not message.text:
+        return
 
-if __name__ == '__main__':
-    app = ApplicationBuilder().token(TG_BOT_TOKEN).build()
-    
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("update", update_docs))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    
-    print("Бот запущен...")
-    app.run_polling()
+    response = ai_assistant.ask_question(message.text)
+    save_message(message.from_user.id, message.text, response)
+    await message.answer(response)
+
+async def main():
+    init_db()
+    logging.info("Starting bot...")
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
