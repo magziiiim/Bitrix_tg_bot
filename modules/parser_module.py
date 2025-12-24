@@ -21,7 +21,6 @@ class BitrixParser:
         self.driver = webdriver.Chrome(service=self.service, options=chrome_options)
 
     def parse_all_sections(self):
-        # Определяем путь к корню проекта (на одну папку выше текущей)
         current_dir = os.path.dirname(os.path.abspath(__file__))
         root_dir = os.path.dirname(current_dir)
         output_file = os.path.join(root_dir, "bitrix_docs.txt")
@@ -35,7 +34,6 @@ class BitrixParser:
             print(f"Открываю сайт: {base_url}")
             self.driver.get(base_url)
             
-            # Ждем появления любого элемента страницы
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
