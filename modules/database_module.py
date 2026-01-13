@@ -1,30 +1,27 @@
-import datetime
-from sqlalchemy import create_engine, Column, Integer, BigInteger, Text, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+import os
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from config import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
 
-DATABASE_URL = "postgresql://octagon:12345@127.0.0.1:5432/bitrix_bot_db"
-Base = declarative_base()
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+load_dotenv()
 
-class Message(Base):
-    __tablename__ = "messages"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(BigInteger)
-    question = Column(Text)
-    answer = Column(Text)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME")
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-def save_message(user_id, question, answer):
-    db = SessionLocal()
-    try:
-        new_msg = Message(user_id=user_id, question=question, answer=answer)
-        db.add(new_msg)
-        db.commit()
-    finally:
-        db.close()
+class Database:
+    def __init__(self):
+        self.engine = create_engine(DATABASE_URL)
+        self.Session = sessionmaker(bind=self.engine)
+
+    def clear_history(self, user_id):
+        with self.Session() as session:
+            session.execute(
+                text("DELETE FROM messages WHERE user_id = :user_id"), 
+                {"user_id": str(user_id)}
+            )
+            session.commit()
